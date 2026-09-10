@@ -1,1 +1,136 @@
 
+/*
+    BSL HTTP Server
+    Lab 1
+*/
+
+include("lib/socket.bzg");
+
+if (socket_init() < 0) {
+    print("Socket initialization failed.\n");
+} else {
+    print("Socket ready.\n");
+}
+
+var server = socket_create();
+
+if (server < 0) {
+    print("Socket creation failed.\n");
+}
+
+if (socket_bind(server, 0, 8080) < 0) {
+    print("Socket bind failed.\n");
+}
+
+if (socket_listen(server, 5) < 0) {
+    print("Socket listen failed.\n");
+}
+
+print("Server running on http://localhost:8080/\n");
+
+while (1) {
+    var client = socket_accept(server);
+
+    if (client < 0) {
+        print("Could not accept client connection.\n");
+        continue;
+    }
+
+    print("Client connected.\n");
+
+    var data = socket_read(client, 1024);
+
+    if (sizeof(data) > 0) {
+        print("Received request:\n");
+        print(data);
+
+        var match = regex("/.* HTTP/1.1", data);
+        var path = "/";
+
+        if (sizeof(match) > 0) {
+            path = substr(match, 0, sizeof(match) - 9);
+        }
+
+        print("Requested path: " + path);
+
+        var body = "";
+        var header = "";
+
+        if (path == "/") {
+            body =
+                "<!DOCTYPE html>"
+                + "<html>"
+                + "<head>"
+                + "<meta charset='UTF-8'>"
+                + "<title>BSL Server - Home</title>"
+                + "</head>"
+                + "<body style='font-family: sans-serif;'>"
+                + "<h1 style='color: #0f766e;'>Welcome to BSL HTTP Server</h1>"
+                + "<p>This is the default landing page.</p>"
+                + "<p>This page was created using Bonezegei Scripting Language.</p>"
+                + "</body>"
+                + "</html>";
+
+            header =
+                "HTTP/1.1 200 OK\r\n"
+                + "Content-Type: text/html\r\n"
+                + "Content-Length: " + sizeof(body) + "\r\n"
+                + "Connection: close\r\n"
+                + "\r\n";
+        }
+
+        else if (path == "/about") {
+            body =
+                "<!DOCTYPE html>"
+                + "<html>"
+                + "<head>"
+                + "<meta charset='UTF-8'>"
+                + "<title>BSL Server - About</title>"
+                + "</head>"
+                + "<body style='font-family: sans-serif;'>"
+                + "<h1 style='color: #2563eb;'>About This Project</h1>"
+                + "<p>This project is a low-level HTTP server built with BSL sockets.</p>"
+                + "<p>It demonstrates socket creation, routing, HTTP headers, and responses.</p>"
+                + "</body>"
+                + "</html>";
+
+            header =
+                "HTTP/1.1 200 OK\r\n"
+                + "Content-Type: text/html\r\n"
+                + "Content-Length: " + sizeof(body) + "\r\n"
+                + "Connection: close\r\n"
+                + "\r\n";
+        }
+
+        else {
+            body =
+                "<!DOCTYPE html>"
+                + "<html>"
+                + "<head>"
+                + "<meta charset='UTF-8'>"
+                + "<title>404 Not Found</title>"
+                + "</head>"
+                + "<body style='font-family: sans-serif;'>"
+                + "<h1 style='color: #e11d48;'>404 - Page Not Found</h1>"
+                + "<p>The requested route does not exist on this BSL server.</p>"
+                + "<p>Requested route: " + path + "</p>"
+                + "</body>"
+                + "</html>";
+
+            header =
+                "HTTP/1.1 404 Not Found\r\n"
+                + "Content-Type: text/html\r\n"
+                + "Content-Length: " + sizeof(body) + "\r\n"
+                + "Connection: close\r\n"
+                + "\r\n";
+        }
+
+        var response = header + body;
+
+        socket_write(client, response, sizeof(response));
+        socket_close(client);
+        gc();
+    }
+}
+
+socket_cleanup();
